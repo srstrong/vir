@@ -17,44 +17,47 @@
 %% API
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 %% gen_server callbacks
 %%--------------------------------------------------------------------
 init([]) ->
 
-    Dispatch = cowboy_router:compile([{'_', resources()}]),
+  Dispatch = cowboy_router:compile([{'_', resources()}]),
 
-    {ok, _} = cowboy:start_http($app_http_listener, 10,
-				[{port, $app_config:web_port()}],
-				[
-                                 {env, [
-                                        {dispatch, Dispatch}
-                                       ]}
-                                ]),
+  case cowboy:start_http($app_http_listener, 10,
+                         [{port, $app_config:web_port()}],
+                         [
+                          {env, [
+                                 {dispatch, Dispatch}
+                                ]}
+                         ]) of
+    {ok, _} -> ok;
+    {error, {already_started, _}} -> ok
+  end,
 
-    {ok, #state{}}.
+  {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+  {reply, ok, State}.
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+  {noreply, State}.
 
 terminate(_Reason, _State) ->
-    ok.
+  ok.
 
 code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+  {ok, State}.
 
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
 resources() ->
-    [
-     {"/[...]", cowboy_static, {priv_dir, $app, <<"www">>}}
-    ].
+  [
+   {"/[...]", cowboy_static, {priv_dir, $app, <<"www">>}}
+  ].

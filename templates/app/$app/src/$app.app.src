@@ -13,7 +13,7 @@
     lager,
     cowboy,
     gproc,
-    shared
+    id3as_common
    ]},
   {mod, { $app_app, []}},
   {env, []}

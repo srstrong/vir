@@ -80,8 +80,12 @@ build_release() {
   local branch_name=$(git rev-parse --abbrev-ref HEAD)
   while read line
   do
-      local build_no=`expr $line + 1`
+      local build_no=$line
   done < "deployment/build_no"
+
+  if [[ $FAKERELEASE -eq 0 ]]; then
+      local build_no=$((build_no + 1))
+  fi
 
   while read line
   do
@@ -189,9 +193,14 @@ build_tar() {
   local git_tag=$2
 
   local app=${PWD##*/}
-  local tar_dir="${app}_$git_tag"
+  if [[ $NO_AUTOEXTRACT -eq 1 ]]; then
+    local tar_dir="${app}_release_$git_tag"
+  else
+    local tar_dir="${app}_$git_tag"
+  fi
   local tar_name="${tar_dir}.tar.gz"
   local autorun_name="$releases_folder/install-${tar_name%.tar.gz}"
+  local non_autorun_name="$releases_folder/${app}_release_$git_tag.tar.gz"
 
   if [[ -f ./release-files/pre_tar.sh ]]; then
       echo Running pre-tar script for $app
@@ -203,9 +212,13 @@ build_tar() {
   mv _rel/$app $tar_dir
   tar cfz $tar_name $tar_dir/  || { echo "Tar failed"; exit 1; }
   mv $tar_dir _rel/$app
-  cat $SOURCEDIR/autoextract.sh $tar_name > $autorun_name
-  rm $tar_name
-  chmod +x $autorun_name
+  if [[ $NO_AUTOEXTRACT -eq 1 ]]; then
+    mv $tar_name $non_autorun_name
+  else
+    cat $SOURCEDIR/autoextract.sh $tar_name > $autorun_name
+    rm $tar_name
+    chmod +x $autorun_name
+  fi
   echo done
 }
 
@@ -305,7 +318,7 @@ usage() {
       echo
       ;;
     "release")
-      echo "vir release [-d] [-f] [-a <app_name>]"
+      echo "vir release [-d] [-f] [-n] [-a <app_name>]"
       echo "---"
       echo "   Creates a self extracting tar of each application and updates the versions (if available)"
       echo "   -d is a dirty release (don't build deps, don't clean all)"
@@ -314,6 +327,7 @@ usage() {
       echo "   if there is an install script found in bin/install.sh in the finished release, it will be executed"
       echo "   on extraction"
       echo "   -a app_name just does the release / tar of app_name"
+      echo "   -n means to not build an auto-extracting tar"
       echo
       ;;
     *)

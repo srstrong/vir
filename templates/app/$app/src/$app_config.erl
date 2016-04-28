@@ -1,6 +1,8 @@
 -module($app_config).
 
--behaviour(gen_server).
+-behaviour(common_config).
+
+-include_lib("id3as_common/include/record_mapper.hrl").
 
 %% API
 -export([
@@ -8,47 +10,48 @@
          web_port/0
         ]).
 
-%% gen_server callbacks
+%% common_config callbacks
 -export([
-         init/1,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2,
+         init/0,
+         commit_config/2,
+         get/2,
          terminate/2,
          code_change/3
         ]).
 
 -define(SERVER, ?MODULE).
+-define(APPLICATION, $app).
+
+-record($app_config, {
+          web_port :: integer()
+         }).
+-type $app_config() :: #$app_config{}.
+
+-export_type([$app_config/0]).
 
 -record($app_config_state, {
          }).
-
 %%------------------------------------------------------------------------------
 %% API
 %%------------------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  common_config:start_link({local, ?SERVER}, #{application => ?APPLICATION,
+                                               module => ?MODULE,
+                                               record_definition => $app_config:record_definition(#$app_config{})}).
 
-web_port() ->
-  get_value(web_port).
+web_port() -> auto_get_value(web_port).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
 %%------------------------------------------------------------------------------
-init([]) ->
-    rewrite_config(),
-
+init() ->
     {ok, #$app_config_state{}}.
 
+commit_config(_Config, State) ->
+  {ok, State}.
 
-handle_call(_, _From, State) ->
-    {ok, State}.
-
-handle_cast(_, State) ->
-    {noreply, State}.
-
-handle_info(_, State) ->
-    {noreply, State}.
+get(not_implemented, State) ->
+  {ok, undefined, State}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -59,21 +62,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 %% Internals
 %%------------------------------------------------------------------------------
-rewrite_config() ->
-  case application:get_env($app, mode) of
-    undefined -> ok;
-    {ok, Mode} ->
-      {ok, Modes} = application:get_env($app, modes),
-      case lists:keyfind(Mode, 1, Modes) of
-        { Mode, Config } ->
-                          lists:foreach(fun({Par, Val}) -> application:set_env($app, Par, Val) end, Config),
-                          application:set_env($app, modes, undefined);
-        false -> io:format(user, "Mode ~p not found ~n", [Mode])
-      end
-  end.
-
-get_value(Name) ->
-  gproc:get_env(l, $app, Name, [os_env, app_env, error]).
-
-get_value(Name, Default) ->
-  gproc:get_env(l, $app, Name, [os_env, app_env, {default, Default}]).
+auto_get_value(Name) -> common_config:auto_get_value(?SERVER, Name).
