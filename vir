@@ -38,6 +38,10 @@ build_release() {
   # number didn't
   if [[ -f "apps/shared/include/version.hrl" ]]; then
     echo "-define(VERSION, \"$release\")." > apps/shared/include/version.hrl
+  else
+      if [[ -f "include/version.hrl" ]]; then
+          echo "-define(VERSION, \"$release\")." > include/version.hrl
+      fi
   fi
 
   if [[ $RERELEASE -eq 0 ]]; then
@@ -51,12 +55,17 @@ build_release() {
     rebar3 clean
   fi
 
-  if [[ -z $RELEASE_APP ]]; then
-    echo "Releasing all apps"
-    ls -l apps | awk '{print $9}' | xargs -L 1 rebar3 release -n
+  if [[ -d apps ]]; then
+      if [[ -z $RELEASE_APP ]]; then
+          echo "Releasing all apps"
+          ls -l apps | awk '{print $9}' | xargs -L 1 rebar3 release -n
+      else
+          echo "Releasing $RELEASE_APP"
+          rebar3 release $RELEASE_APP
+      fi
   else
-    echo "Releasing $RELEASE_APP"
-    rebar3 release $RELEASE_APP
+      echo "Releasing single app"
+      rebar3 release
   fi
 
   if [[ $RERELEASE -eq 1 ]]; then
