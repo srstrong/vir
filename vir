@@ -96,7 +96,12 @@ build_release() {
     git add deployment/bill_of_materials.info
     git add deployment/label
 
-    ls -d apps/*/include | xargs -n 1 git add
+
+    if [[ -f "apps/shared/include/version.hrl" ]]; then
+      ls -d apps/*/include | xargs -n 1 git add
+    else
+      ls -d include | xargs -n 1 git add
+    fi
 
     git tag $release
     git commit -m "Automated build number increase: $build_no"
